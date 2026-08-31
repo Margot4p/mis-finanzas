@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f6f8">
 <title>Prioridad Financiera — Negocio + Casa</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#f5f6f8; --card:#ffffff; --text:#17191c; --muted:#666d76; --line:#dfe3e8;
@@ -40,126 +42,156 @@ button{min-height:42px;border:0;border-radius:10px;padding:10px 13px;font-weight
 .bad{border-left-color:var(--danger)}
 .big{font-size:1.25rem;font-weight:750}
 .note{font-size:.82rem;color:var(--muted)}
-.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:var(--soft);font-size:.76rem;margin-left:5px}
+.status{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:#eef1f4;font-size:.82rem}
+.dot{width:8px;height:8px;border-radius:50%;background:#999}
+.dot.ok{background:var(--ok)}
+.auth{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:end}
+.hidden{display:none!important}
 hr{border:0;border-top:1px solid var(--line);margin:14px 0}
-.hidden{display:none}
 @media(max-width:760px){
   .grid,.grid3,.summary{grid-template-columns:1fr 1fr}
   .row,.row.ob{grid-template-columns:1fr 1fr}
   .row button{grid-column:1/-1}
 }
-@media(max-width:460px){
-  .grid,.grid3,.summary,.row,.row.ob{grid-template-columns:1fr}
+@media(max-width:520px){
+  .grid,.grid3,.summary,.row,.row.ob,.auth{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Prioridad Financiera — Negocio + Casa</h1>
-  <p class="muted">Para ingresos variables. Tú introduces el dinero disponible; la app protege primero obligaciones y reservas, calcula el presupuesto de la semana y después prioriza deudas.</p>
+  <p class="muted">Ingresos variables, obligaciones, presupuesto semanal y deudas en un solo lugar.</p>
 
-  <section class="card">
-    <h2>1. Situación actual</h2>
-    <div class="grid">
-      <label>Efectivo personal disponible ahora ($)
-        <input id="personalCash" type="number" min="0" step="0.01" value="0">
-      </label>
-      <label>Efectivo del negocio disponible ahora ($)
-        <input id="businessCash" type="number" min="0" step="0.01" value="0">
-      </label>
-      <label>Reserva personal mínima que no quieres tocar ($)
-        <input id="personalReserve" type="number" min="0" step="0.01" value="0">
-      </label>
-      <label>Reserva mínima del negocio ($)
-        <input id="businessReserve" type="number" min="0" step="0.01" value="0">
-      </label>
-      <label>Presupuesto esencial de esta semana ($)
-        <input id="weeklyBudget" type="number" min="0" step="0.01" value="0">
-      </label>
-      <label>Ya gastado de ese presupuesto esta semana ($)
-        <input id="weeklySpent" type="number" min="0" step="0.01" value="0">
-      </label>
+  <section class="card" id="authCard">
+    <div id="loggedOut">
+      <h2>Acceso privado</h2>
+      <p class="muted">No necesitas contraseña. Escribe tu email y recibirás un enlace privado para entrar.</p>
+      <div class="auth">
+        <label>Email
+          <input id="email" type="email" autocomplete="email" placeholder="tu@email.com">
+        </label>
+        <button class="primary" id="sendLink">Enviar enlace privado</button>
+      </div>
+      <p id="authMsg" class="note"></p>
     </div>
-    <div class="toolbar">
-      <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
-        <input id="allowDraw" type="checkbox" style="width:auto;margin:0">
-        Permitir sugerir transferencia del negocio a personal solo después de proteger obligaciones y reserva del negocio
-      </label>
+
+    <div id="loggedIn" class="hidden">
+      <div class="toolbar" style="justify-content:space-between;align-items:center">
+        <div>
+          <span class="status"><span class="dot ok"></span><span id="userEmail">Conectado</span></span>
+          <p class="note" style="margin:7px 0 0">Tus datos se sincronizan con Supabase.</p>
+        </div>
+        <button class="ghost" id="signOut">Cerrar sesión</button>
+      </div>
     </div>
   </section>
 
-  <section class="card">
-    <h2>2. Obligaciones fijas</h2>
-    <p class="muted">Ejemplos: renta, luz, internet, seguro, teléfono, payroll, materiales comprometidos, impuestos, software. Pon la fecha real de vencimiento.</p>
-    <div id="obligations"></div>
-    <div class="toolbar"><button class="secondary" id="addOb">+ Agregar obligación</button></div>
-  </section>
+  <main id="appMain" class="hidden">
+    <section class="card">
+      <h2>1. Situación actual</h2>
+      <div class="grid">
+        <label>Efectivo personal disponible ahora ($)
+          <input id="personalCash" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label>Efectivo del negocio disponible ahora ($)
+          <input id="businessCash" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label>Reserva personal mínima ($)
+          <input id="personalReserve" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label>Reserva mínima del negocio ($)
+          <input id="businessReserve" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label>Presupuesto esencial de esta semana ($)
+          <input id="weeklyBudget" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label>Ya gastado esta semana ($)
+          <input id="weeklySpent" type="number" min="0" step="0.01" value="0">
+        </label>
+      </div>
+      <div class="toolbar">
+        <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
+          <input id="allowDraw" type="checkbox" style="width:auto;margin:0">
+          Permitir sugerir transferencia negocio → personal solo después de proteger obligaciones y reserva del negocio
+        </label>
+      </div>
+    </section>
 
-  <section class="card">
-    <h2>3. Deudas</h2>
-    <p class="muted">No pongas números de cuenta. Solo nombre, saldo, APR, mínimo y vencimiento del próximo pago.</p>
-    <div id="debts"></div>
-    <div class="toolbar"><button class="secondary" id="addDebt">+ Agregar deuda</button></div>
-  </section>
+    <section class="card">
+      <h2>2. Obligaciones fijas</h2>
+      <p class="muted">Renta, luz, internet, comida, seguro, impuestos, materiales, payroll, software, etc.</p>
+      <div id="obligations"></div>
+      <div class="toolbar"><button class="secondary" id="addOb">+ Agregar obligación</button></div>
+    </section>
 
-  <section class="card">
-    <h2>4. Cuando entra dinero</h2>
-    <div class="grid3">
-      <label>Cantidad nueva ($)
-        <input id="newMoney" type="number" min="0" step="0.01" value="0">
-      </label>
-      <label>Entró a
-        <select id="moneyTo">
-          <option value="business">Negocio</option>
-          <option value="personal">Personal</option>
-        </select>
-      </label>
-      <label>Estrategia para dinero extra de deudas
-        <select id="strategy">
-          <option value="avalanche">Avalancha — mayor APR primero</option>
-          <option value="snowball">Bola de nieve — menor saldo primero</option>
-        </select>
-      </label>
-    </div>
-    <div class="toolbar">
-      <button class="primary" id="recommend">Calcular prioridad ahora</button>
-      <button class="ghost" id="apply" disabled>Aplicar plan a mis saldos</button>
-    </div>
-  </section>
+    <section class="card">
+      <h2>3. Deudas</h2>
+      <p class="muted">No pongas números de cuenta. Solo nombre, saldo, APR, mínimo y vencimiento.</p>
+      <div id="debts"></div>
+      <div class="toolbar"><button class="secondary" id="addDebt">+ Agregar deuda</button></div>
+    </section>
 
-  <section class="card">
-    <h2>Resultado</h2>
-    <div id="headline" class="big" style="margin-top:10px">Agrega tus datos y pulsa “Calcular prioridad ahora”.</div>
-    <div class="summary" id="summary"></div>
-    <div id="plan"></div>
-    <p id="warning" class="note"></p>
-  </section>
+    <section class="card">
+      <h2>4. Cuando entra dinero</h2>
+      <div class="grid3">
+        <label>Cantidad nueva ($)
+          <input id="newMoney" type="number" min="0" step="0.01" value="0">
+        </label>
+        <label>Entró a
+          <select id="moneyTo">
+            <option value="business">Negocio</option>
+            <option value="personal">Personal</option>
+          </select>
+        </label>
+        <label>Estrategia de deudas
+          <select id="strategy">
+            <option value="avalanche">Avalancha — mayor APR primero</option>
+            <option value="snowball">Bola de nieve — menor saldo primero</option>
+          </select>
+        </label>
+      </div>
+      <div class="toolbar">
+        <button class="primary" id="recommend">Calcular prioridad ahora</button>
+        <button class="ghost" id="apply" disabled>Aplicar plan a mis saldos</button>
+      </div>
+    </section>
 
-  <section class="card">
-    <h2>Guardar y llevarte tus datos</h2>
-    <p class="muted">Esta versión guarda los datos localmente en el navegador del dispositivo. También puedes exportar un respaldo para moverlo a otro teléfono o computadora.</p>
-    <div class="toolbar">
-      <button class="ghost" id="save">Guardar ahora</button>
-      <button class="ghost" id="export">Exportar respaldo</button>
-      <label class="ghost" style="padding:10px 13px;border-radius:10px;font-weight:650;cursor:pointer;color:var(--text)">
-        Importar respaldo
-        <input id="importFile" type="file" accept="application/json" class="hidden">
-      </label>
-      <button class="danger" id="reset">Borrar todo</button>
-    </div>
-    <p id="saveMsg" class="note"></p>
-  </section>
+    <section class="card">
+      <h2>Resultado</h2>
+      <div id="headline" class="big" style="margin-top:10px">Agrega tus datos y pulsa “Calcular prioridad ahora”.</div>
+      <div class="summary" id="summary"></div>
+      <div id="plan"></div>
+      <p id="warning" class="note"></p>
+    </section>
 
-  <p class="note">La prioridad es una herramienta de planificación, no reemplaza consejo contable, fiscal o legal. Si una cuenta está vencida, en collections, tiene riesgo de corte/evicción, o una promoción de interés por vencer, esa situación puede cambiar el orden matemático.</p>
+    <section class="card">
+      <div class="toolbar" style="justify-content:space-between;align-items:center">
+        <div>
+          <h2>Sincronización</h2>
+          <p id="syncMsg" class="note" style="margin:6px 0 0">Preparando…</p>
+        </div>
+        <button class="ghost" id="saveCloud">Guardar ahora</button>
+      </div>
+    </section>
+  </main>
+
+  <p class="note">Esta herramienta organiza prioridades. No sustituye asesoría contable, fiscal o legal.</p>
 </div>
 
 <script>
 (() => {
-  const KEY = "prioridad_financiera_v1";
-  let obCounter = 0, debtCounter = 0, lastPlan = null;
+  const SUPABASE_URL = 'https://micyofgodsiromjrefyj.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_cqlbOzxMsxVU3Z6rN7Oj9Q_dQj9IWMB';
+  const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const LOCAL_KEY = "prioridad_financiera_cloud_v1";
+
+  let user = null;
+  let obCounter = 0, debtCounter = 0, lastPlan = null, saveTimer = null, loadingRemote = false;
+
   const $ = id => document.getElementById(id);
   const num = v => Math.max(0, Number(v) || 0);
-  const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number.isFinite(n)?n:0);
+  const money = n => new Intl.NumberFormat("en-US", {style:"currency",currency:"USD"}).format(Number.isFinite(n)?n:0);
   const todayISO = () => new Date().toISOString().slice(0,10);
   const daysUntil = s => {
     if(!s) return 9999;
@@ -169,7 +201,35 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
   };
   const esc = s => String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
 
-  function addOb(data={}){
+  function setAuthUI(session) {
+    user = session?.user || null;
+    $("loggedOut").classList.toggle("hidden", !!user);
+    $("loggedIn").classList.toggle("hidden", !user);
+    $("appMain").classList.toggle("hidden", !user);
+    if(user) $("userEmail").textContent = user.email || "Conectado";
+  }
+
+  async function sendMagicLink() {
+    const email = $("email").value.trim();
+    if(!email) { $("authMsg").textContent = "Escribe tu email."; return; }
+    $("sendLink").disabled = true;
+    $("authMsg").textContent = "Enviando…";
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await client.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo }
+    });
+    $("sendLink").disabled = false;
+    $("authMsg").textContent = error ? ("Error: " + error.message) : "Revisa tu email y abre el enlace privado.";
+  }
+
+  async function signOut() {
+    await client.auth.signOut();
+    setAuthUI(null);
+    $("authMsg").textContent = "Sesión cerrada.";
+  }
+
+  function addOb(data={}) {
     const id = ++obCounter;
     const div = document.createElement("div");
     div.className = "row ob"; div.dataset.id = id;
@@ -183,11 +243,11 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
     $("obligations").appendChild(div);
     div.querySelector('[data-f="type"]').value=data.type||"personal";
     div.querySelector('[data-f="priority"]').value=data.priority||"critical";
-    div.querySelector("button").addEventListener("click",()=>{div.remove(); autosave();});
-    div.querySelectorAll("input,select").forEach(x=>x.addEventListener("change",autosave));
+    div.querySelector("button").addEventListener("click",()=>{div.remove(); scheduleSave();});
+    div.querySelectorAll("input,select").forEach(x=>x.addEventListener("change",scheduleSave));
   }
 
-  function addDebt(data={}){
+  function addDebt(data={}) {
     const id = ++debtCounter;
     const div = document.createElement("div");
     div.className = "row"; div.dataset.id = id;
@@ -195,15 +255,15 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
       <label>Nombre<input data-f="name" value="${esc(data.name||"")}"></label>
       <label>Saldo ($)<input data-f="balance" type="number" min="0" step="0.01" value="${num(data.balance)}"></label>
       <label>APR %<input data-f="apr" type="number" min="0" step="0.01" value="${num(data.apr)}"></label>
-      <label>Mínimo próximo ($)<input data-f="minimum" type="number" min="0" step="0.01" value="${num(data.minimum)}"></label>
+      <label>Mínimo ($)<input data-f="minimum" type="number" min="0" step="0.01" value="${num(data.minimum)}"></label>
       <label>Vence<input data-f="due" type="date" value="${data.due||""}"></label>
       <button class="danger" type="button">Eliminar</button>`;
     $("debts").appendChild(div);
-    div.querySelector("button").addEventListener("click",()=>{div.remove(); autosave();});
-    div.querySelectorAll("input").forEach(x=>x.addEventListener("change",autosave));
+    div.querySelector("button").addEventListener("click",()=>{div.remove(); scheduleSave();});
+    div.querySelectorAll("input").forEach(x=>x.addEventListener("change",scheduleSave));
   }
 
-  function readState(){
+  function readState() {
     const obligations=[...document.querySelectorAll("#obligations .row")].map(r=>({
       name:r.querySelector('[data-f="name"]').value.trim()||"Obligación",
       type:r.querySelector('[data-f="type"]').value,
@@ -226,7 +286,8 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
     };
   }
 
-  function writeState(s){
+  function writeState(s={}) {
+    loadingRemote = true;
     $("personalCash").value=num(s.personalCash); $("businessCash").value=num(s.businessCash);
     $("personalReserve").value=num(s.personalReserve); $("businessReserve").value=num(s.businessReserve);
     $("weeklyBudget").value=num(s.weeklyBudget); $("weeklySpent").value=num(s.weeklySpent);
@@ -235,14 +296,61 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
     (s.obligations||[]).forEach(addOb); (s.debts||[]).forEach(addDebt);
     if(!(s.obligations||[]).length) addOb({name:"Renta",type:"personal",priority:"critical"});
     if(!(s.debts||[]).length) addDebt({name:"Tarjeta 1"});
+    loadingRemote = false;
   }
 
-  function autosave(){
-    try{ localStorage.setItem(KEY, JSON.stringify(readState())); $("saveMsg").textContent="Guardado localmente."; }
-    catch(e){ $("saveMsg").textContent="No se pudo guardar en este navegador."; }
+  async function loadCloud() {
+    if(!user) return;
+    $("syncMsg").textContent = "Cargando tus datos…";
+    const { data, error } = await client
+      .from("finance_state")
+      .select("data, updated_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if(error) {
+      $("syncMsg").textContent = "No se pudieron cargar los datos: " + error.message;
+      const local = localStorage.getItem(LOCAL_KEY);
+      if(local) try{ writeState(JSON.parse(local)); }catch(e){}
+      return;
+    }
+
+    if(data?.data) {
+      writeState(data.data);
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(data.data));
+      $("syncMsg").textContent = "Sincronizado con la nube.";
+    } else {
+      const local = localStorage.getItem(LOCAL_KEY);
+      if(local) {
+        try{ writeState(JSON.parse(local)); }catch(e){ writeState({}); }
+      } else {
+        writeState({});
+      }
+      await saveCloud();
+    }
   }
 
-  function allocate(){
+  async function saveCloud() {
+    if(!user || loadingRemote) return;
+    const state = readState();
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
+    $("syncMsg").textContent = "Guardando…";
+    const { error } = await client.from("finance_state").upsert({
+      user_id: user.id,
+      data: state,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "user_id" });
+    $("syncMsg").textContent = error ? ("Error al guardar: " + error.message) : "Guardado y sincronizado.";
+  }
+
+  function scheduleSave() {
+    if(loadingRemote || !user) return;
+    clearTimeout(saveTimer);
+    $("syncMsg").textContent = "Cambios pendientes…";
+    saveTimer = setTimeout(saveCloud, 700);
+  }
+
+  function allocate() {
     const s=readState();
     let p=s.personalCash, b=s.businessCash;
     const incoming=num($("newMoney").value);
@@ -256,52 +364,53 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
       const pay=Math.min(pool,o.amount);
       if(pay>0){
         if(from==="business") b-=pay; else p-=pay;
-        plan.push({kind:"ob",level:o.priority==="critical"?"bad":"warn",text:`${from==="business"?"Negocio":"Personal"}: pagar ${money(pay)} a ${o.name}`,sub:`Vence ${o.due||"sin fecha"} · quedan ${money(o.amount-pay)}`});
+        plan.push({level:o.priority==="critical"?"bad":"warn",text:`${from==="business"?"Negocio":"Personal"}: pagar ${money(pay)} a ${o.name}`,sub:`Vence ${o.due||"sin fecha"} · quedan ${money(o.amount-pay)}`});
         changes.ob.push({i:o.i,amount:pay});
       }
     };
 
-    // 1) Business critical obligations due within 14 days
     obligations.filter(o=>o.type==="business" && o.priority==="critical" && o.days<=14).sort((a,c)=>a.days-c.days).forEach(o=>payOb(o,"business"));
 
-    // 2) Protect business reserve
     if(b<s.businessReserve){
-      plan.push({kind:"info",level:"bad",text:`Reserva del negocio incompleta`,sub:`Tienes ${money(b)} y tu meta es ${money(s.businessReserve)}. No se recomienda sacar dinero personal del negocio todavía.`});
+      plan.push({level:"bad",text:"Reserva del negocio incompleta",sub:`Tienes ${money(b)} y tu meta es ${money(s.businessReserve)}. No sacar dinero personal todavía.`});
     } else {
-      plan.push({kind:"info",level:"good",text:`Reserva del negocio protegida`,sub:`Meta: ${money(s.businessReserve)}`});
+      plan.push({level:"good",text:"Reserva del negocio protegida",sub:`Meta: ${money(s.businessReserve)}`});
     }
 
-    // 3) Personal critical obligations due within 14 days
     obligations.filter(o=>o.type==="personal" && o.priority==="critical" && o.days<=14).sort((a,c)=>a.days-c.days).forEach(o=>payOb(o,"personal"));
 
-    // 4) Weekly essential budget remaining
     let weekNeed=Math.max(0,s.weeklyBudget-s.weeklySpent);
     let weekPay=Math.min(p,weekNeed);
-    if(weekPay>0){ p-=weekPay; plan.push({kind:"week",level:"good",text:`Separar ${money(weekPay)} para gastos esenciales de esta semana`,sub:`Necesidad semanal restante: ${money(Math.max(0,weekNeed-weekPay))}`}); }
-    let personalShort=Math.max(0, s.personalReserve - p);
+    if(weekPay>0){
+      p-=weekPay;
+      plan.push({level:"good",text:`Separar ${money(weekPay)} para gastos esenciales de esta semana`,sub:`Necesidad semanal restante: ${money(Math.max(0,weekNeed-weekPay))}`});
+    }
 
-    // 5) Optional owner draw only from business cash above reserve
+    let personalShort=Math.max(0, s.personalReserve - p);
     if(s.allowDraw && personalShort>0 && b>s.businessReserve){
       const surplus=b-s.businessReserve;
       const draw=Math.min(surplus,personalShort);
-      if(draw>0){ b-=draw; p+=draw; plan.push({kind:"draw",level:"warn",text:`Transferencia sugerida negocio → personal: ${money(draw)}`,sub:`Solo usando efectivo por encima de la reserva del negocio.`}); }
+      if(draw>0){
+        b-=draw; p+=draw;
+        plan.push({level:"warn",text:`Transferencia sugerida negocio → personal: ${money(draw)}`,sub:"Solo usando efectivo por encima de la reserva del negocio."});
+      }
     }
 
-    // 6) Personal reserve
     if(p<s.personalReserve){
-      plan.push({kind:"info",level:"warn",text:`Reserva personal todavía incompleta`,sub:`Tienes ${money(p)} y la meta es ${money(s.personalReserve)}.`});
+      plan.push({level:"warn",text:"Reserva personal todavía incompleta",sub:`Tienes ${money(p)} y la meta es ${money(s.personalReserve)}.`});
     }
 
-    // 7) Debt minimums due within 14 days
     debts.filter(d=>d.days<=14).sort((a,c)=>a.days-c.days).forEach(d=>{
       const pay=Math.min(p,d.minimum,d.balance);
-      if(pay>0){ p-=pay; plan.push({kind:"debt",level:"bad",text:`Pagar mínimo ${money(pay)} a ${d.name}`,sub:`APR ${d.apr.toFixed(2)}% · vence ${d.due||"sin fecha"}`}); changes.debt.push({i:d.i,amount:pay}); }
+      if(pay>0){
+        p-=pay;
+        plan.push({level:"bad",text:`Pagar mínimo ${money(pay)} a ${d.name}`,sub:`APR ${d.apr.toFixed(2)}% · vence ${d.due||"sin fecha"}`});
+        changes.debt.push({i:d.i,amount:pay});
+      }
     });
 
-    // 8) Normal obligations due within 14 days
     obligations.filter(o=>o.priority==="normal" && o.days<=14).sort((a,c)=>a.days-c.days).forEach(o=>payOb(o,o.type));
 
-    // 9) Extra debt payment only from personal cash above reserve
     let extra=Math.max(0,p-s.personalReserve);
     if(extra>0 && debts.length){
       let sorted=[...debts];
@@ -312,19 +421,22 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
         const already=changes.debt.filter(x=>x.i===d.i).reduce((z,x)=>z+x.amount,0);
         const capacity=Math.max(0,d.balance-already);
         const pay=Math.min(extra,capacity);
-        if(pay>0){ extra-=pay; p-=pay; plan.push({kind:"debt",level:"good",text:`Pago extra ${money(pay)} a ${d.name}`,sub:`Prioridad ${$("strategy").value==="snowball"?"por saldo más pequeño":"por APR más alto"} · APR ${d.apr.toFixed(2)}%`}); changes.debt.push({i:d.i,amount:pay}); }
+        if(pay>0){
+          extra-=pay; p-=pay;
+          plan.push({level:"good",text:`Pago extra ${money(pay)} a ${d.name}`,sub:`Prioridad ${$("strategy").value==="snowball"?"por saldo más pequeño":"por APR más alto"} · APR ${d.apr.toFixed(2)}%`});
+          changes.debt.push({i:d.i,amount:pay});
+        }
       }
     }
 
     const totalDebt=debts.reduce((z,d)=>z+d.balance,0);
     const interest=debts.reduce((z,d)=>z+d.balance*(d.apr/100)/12,0);
-    lastPlan={s,finalP:p,finalB:b,changes,incoming,to:$("moneyTo").value};
+    lastPlan={finalP:p,finalB:b,changes};
     renderPlan(plan,{p,b,totalDebt,interest});
     $("apply").disabled=false;
-    autosave();
   }
 
-  function renderPlan(plan,m){
+  function renderPlan(plan,m) {
     $("headline").textContent=plan.length? "Orden recomendado con el dinero disponible:" : "No hay movimientos recomendados todavía.";
     $("summary").innerHTML=`
       <div class="metric"><span class="muted">Personal después</span><b>${money(m.p)}</b></div>
@@ -332,10 +444,10 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
       <div class="metric"><span class="muted">Deuda total</span><b>${money(m.totalDebt)}</b></div>
       <div class="metric"><span class="muted">Interés aprox./mes</span><b>${money(m.interest)}</b></div>`;
     $("plan").innerHTML=plan.map((x,i)=>`<div class="planstep ${x.level}"><strong>${i+1}. ${esc(x.text)}</strong><span class="muted">${esc(x.sub||"")}</span></div>`).join("");
-    $("warning").textContent="La app no usa tu banco. Solo calcula con los números que tú introduces.";
+    $("warning").textContent="La app calcula con los números que tú introduces; no se conecta a tu banco.";
   }
 
-  function applyPlan(){
+  function applyPlan() {
     if(!lastPlan) return;
     $("personalCash").value=lastPlan.finalP.toFixed(2);
     $("businessCash").value=lastPlan.finalB.toFixed(2);
@@ -350,41 +462,31 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
       if(inp) inp.value=Math.max(0,num(inp.value)-c.amount).toFixed(2);
     });
     $("newMoney").value="0";
-    lastPlan=null; $("apply").disabled=true; autosave();
-    $("saveMsg").textContent="Plan aplicado y datos guardados.";
+    lastPlan=null; $("apply").disabled=true;
+    saveCloud();
   }
 
-  $("addOb").addEventListener("click",()=>{addOb(); autosave();});
-  $("addDebt").addEventListener("click",()=>{addDebt(); autosave();});
-  $("recommend").addEventListener("click",allocate);
-  $("apply").addEventListener("click",applyPlan);
-  $("save").addEventListener("click",autosave);
+  $("sendLink").addEventListener("click", sendMagicLink);
+  $("signOut").addEventListener("click", signOut);
+  $("addOb").addEventListener("click",()=>{addOb(); scheduleSave();});
+  $("addDebt").addEventListener("click",()=>{addDebt(); scheduleSave();});
+  $("recommend").addEventListener("click", allocate);
+  $("apply").addEventListener("click", applyPlan);
+  $("saveCloud").addEventListener("click", saveCloud);
+
   ["personalCash","businessCash","personalReserve","businessReserve","weeklyBudget","weeklySpent","allowDraw"].forEach(id=>{
-    $(id).addEventListener("change",autosave);
+    $(id).addEventListener("change",scheduleSave);
   });
 
-  $("export").addEventListener("click",()=>{
-    const blob=new Blob([JSON.stringify(readState(),null,2)],{type:"application/json"});
-    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-    a.download="respaldo_prioridad_financiera.json"; a.click(); URL.revokeObjectURL(a.href);
+  client.auth.onAuthStateChange(async (_event, session) => {
+    setAuthUI(session);
+    if(session?.user) await loadCloud();
   });
 
-  $("importFile").addEventListener("change",async e=>{
-    const f=e.target.files?.[0]; if(!f) return;
-    try{ const s=JSON.parse(await f.text()); writeState(s); autosave(); $("saveMsg").textContent="Respaldo importado."; }
-    catch(err){ $("saveMsg").textContent="Ese archivo no parece un respaldo válido."; }
-    e.target.value="";
+  client.auth.getSession().then(({data})=>{
+    setAuthUI(data.session);
+    if(data.session?.user) loadCloud();
   });
-
-  $("reset").addEventListener("click",()=>{
-    if(!confirm("¿Borrar todos los datos guardados en este navegador?")) return;
-    localStorage.removeItem(KEY); writeState({}); $("saveMsg").textContent="Datos borrados.";
-  });
-
-  try{
-    const saved=JSON.parse(localStorage.getItem(KEY)||"null");
-    if(saved) writeState(saved); else writeState({});
-  }catch(e){ writeState({}); }
 })();
 </script>
 </body>
