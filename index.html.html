@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Prioridad Financiera — Negocio + Casa</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --text:#17191c; --muted:#666d76; --line:#dfe3e8;
+  --accent:#1f6feb; --soft:#eaf2ff; --warn:#9a6700; --danger:#b42318; --ok:#16794d;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:980px;margin:0 auto;padding:18px 14px 40px}
+h1{font-size:1.45rem;margin:0 0 6px}
+h2{font-size:1.08rem;margin:0}
+p{line-height:1.45}
+.muted{color:var(--muted);font-size:.92rem}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
+.row{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr auto;gap:9px;align-items:end;margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:12px}
+.row.ob{grid-template-columns:1.2fr .8fr 1fr 1fr 1fr auto}
+label{display:block;font-size:.84rem;color:var(--muted)}
+input,select,button{font:inherit}
+input,select{width:100%;margin-top:5px;padding:11px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--text);font-size:16px}
+button{min-height:42px;border:0;border-radius:10px;padding:10px 13px;font-weight:650;cursor:pointer}
+.primary{background:var(--accent);color:white}
+.secondary{background:var(--soft);color:var(--text);border:1px solid #c9dbff}
+.ghost{background:white;color:var(--text);border:1px solid var(--line)}
+.danger{background:#fff0ef;color:var(--danger);border:1px solid #ffd2cf}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.metric{padding:10px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.metric b{display:block;font-size:1.08rem;margin-top:3px}
+.planstep{padding:11px;border-left:4px solid var(--line);background:#fafbfc;border-radius:8px;margin-top:8px}
+.planstep strong{display:block}
+.good{border-left-color:var(--ok)}
+.warn{border-left-color:var(--warn)}
+.bad{border-left-color:var(--danger)}
+.big{font-size:1.25rem;font-weight:750}
+.note{font-size:.82rem;color:var(--muted)}
+.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:var(--soft);font-size:.76rem;margin-left:5px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.hidden{display:none}
+@media(max-width:760px){
+  .grid,.grid3,.summary{grid-template-columns:1fr 1fr}
+  .row,.row.ob{grid-template-columns:1fr 1fr}
+  .row button{grid-column:1/-1}
+}
+@media(max-width:460px){
+  .grid,.grid3,.summary,.row,.row.ob{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Prioridad Financiera — Negocio + Casa</h1>
+  <p class="muted">Para ingresos variables. Tú introduces el dinero disponible; la app protege primero obligaciones y reservas, calcula el presupuesto de la semana y después prioriza deudas.</p>
+
+  <section class="card">
+    <h2>1. Situación actual</h2>
+    <div class="grid">
+      <label>Efectivo personal disponible ahora ($)
+        <input id="personalCash" type="number" min="0" step="0.01" value="0">
+      </label>
+      <label>Efectivo del negocio disponible ahora ($)
+        <input id="businessCash" type="number" min="0" step="0.01" value="0">
+      </label>
+      <label>Reserva personal mínima que no quieres tocar ($)
+        <input id="personalReserve" type="number" min="0" step="0.01" value="0">
+      </label>
+      <label>Reserva mínima del negocio ($)
+        <input id="businessReserve" type="number" min="0" step="0.01" value="0">
+      </label>
+      <label>Presupuesto esencial de esta semana ($)
+        <input id="weeklyBudget" type="number" min="0" step="0.01" value="0">
+      </label>
+      <label>Ya gastado de ese presupuesto esta semana ($)
+        <input id="weeklySpent" type="number" min="0" step="0.01" value="0">
+      </label>
+    </div>
+    <div class="toolbar">
+      <label style="display:flex;align-items:center;gap:8px;color:var(--text)">
+        <input id="allowDraw" type="checkbox" style="width:auto;margin:0">
+        Permitir sugerir transferencia del negocio a personal solo después de proteger obligaciones y reserva del negocio
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Obligaciones fijas</h2>
+    <p class="muted">Ejemplos: renta, luz, internet, seguro, teléfono, payroll, materiales comprometidos, impuestos, software. Pon la fecha real de vencimiento.</p>
+    <div id="obligations"></div>
+    <div class="toolbar"><button class="secondary" id="addOb">+ Agregar obligación</button></div>
+  </section>
+
+  <section class="card">
+    <h2>3. Deudas</h2>
+    <p class="muted">No pongas números de cuenta. Solo nombre, saldo, APR, mínimo y vencimiento del próximo pago.</p>
+    <div id="debts"></div>
+    <div class="toolbar"><button class="secondary" id="addDebt">+ Agregar deuda</button></div>
+  </section>
+
+  <section class="card">
+    <h2>4. Cuando entra dinero</h2>
+    <div class="grid3">
+      <label>Cantidad nueva ($)
+        <input id="newMoney" type="number" min="0" step="0.01" value="0">
+      </label>
+      <label>Entró a
+        <select id="moneyTo">
+          <option value="business">Negocio</option>
+          <option value="personal">Personal</option>
+        </select>
+      </label>
+      <label>Estrategia para dinero extra de deudas
+        <select id="strategy">
+          <option value="avalanche">Avalancha — mayor APR primero</option>
+          <option value="snowball">Bola de nieve — menor saldo primero</option>
+        </select>
+      </label>
+    </div>
+    <div class="toolbar">
+      <button class="primary" id="recommend">Calcular prioridad ahora</button>
+      <button class="ghost" id="apply" disabled>Aplicar plan a mis saldos</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Resultado</h2>
+    <div id="headline" class="big" style="margin-top:10px">Agrega tus datos y pulsa “Calcular prioridad ahora”.</div>
+    <div class="summary" id="summary"></div>
+    <div id="plan"></div>
+    <p id="warning" class="note"></p>
+  </section>
+
+  <section class="card">
+    <h2>Guardar y llevarte tus datos</h2>
+    <p class="muted">Esta versión guarda los datos localmente en el navegador del dispositivo. También puedes exportar un respaldo para moverlo a otro teléfono o computadora.</p>
+    <div class="toolbar">
+      <button class="ghost" id="save">Guardar ahora</button>
+      <button class="ghost" id="export">Exportar respaldo</button>
+      <label class="ghost" style="padding:10px 13px;border-radius:10px;font-weight:650;cursor:pointer;color:var(--text)">
+        Importar respaldo
+        <input id="importFile" type="file" accept="application/json" class="hidden">
+      </label>
+      <button class="danger" id="reset">Borrar todo</button>
+    </div>
+    <p id="saveMsg" class="note"></p>
+  </section>
+
+  <p class="note">La prioridad es una herramienta de planificación, no reemplaza consejo contable, fiscal o legal. Si una cuenta está vencida, en collections, tiene riesgo de corte/evicción, o una promoción de interés por vencer, esa situación puede cambiar el orden matemático.</p>
+</div>
+
+<script>
+(() => {
+  const KEY = "prioridad_financiera_v1";
+  let obCounter = 0, debtCounter = 0, lastPlan = null;
+  const $ = id => document.getElementById(id);
+  const num = v => Math.max(0, Number(v) || 0);
+  const money = n => new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(Number.isFinite(n)?n:0);
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  const daysUntil = s => {
+    if(!s) return 9999;
+    const a = new Date(todayISO()+"T00:00:00Z");
+    const b = new Date(s+"T00:00:00Z");
+    return Math.ceil((b-a)/86400000);
+  };
+  const esc = s => String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+
+  function addOb(data={}){
+    const id = ++obCounter;
+    const div = document.createElement("div");
+    div.className = "row ob"; div.dataset.id = id;
+    div.innerHTML = `
+      <label>Nombre<input data-f="name" value="${esc(data.name||"")}"></label>
+      <label>Tipo<select data-f="type"><option value="personal">Personal</option><option value="business">Negocio</option></select></label>
+      <label>Importe pendiente ($)<input data-f="amount" type="number" min="0" step="0.01" value="${num(data.amount)}"></label>
+      <label>Vence<input data-f="due" type="date" value="${data.due||""}"></label>
+      <label>Prioridad<select data-f="priority"><option value="critical">Obligatoria</option><option value="normal">Normal</option></select></label>
+      <button class="danger" type="button">Eliminar</button>`;
+    $("obligations").appendChild(div);
+    div.querySelector('[data-f="type"]').value=data.type||"personal";
+    div.querySelector('[data-f="priority"]').value=data.priority||"critical";
+    div.querySelector("button").addEventListener("click",()=>{div.remove(); autosave();});
+    div.querySelectorAll("input,select").forEach(x=>x.addEventListener("change",autosave));
+  }
+
+  function addDebt(data={}){
+    const id = ++debtCounter;
+    const div = document.createElement("div");
+    div.className = "row"; div.dataset.id = id;
+    div.innerHTML = `
+      <label>Nombre<input data-f="name" value="${esc(data.name||"")}"></label>
+      <label>Saldo ($)<input data-f="balance" type="number" min="0" step="0.01" value="${num(data.balance)}"></label>
+      <label>APR %<input data-f="apr" type="number" min="0" step="0.01" value="${num(data.apr)}"></label>
+      <label>Mínimo próximo ($)<input data-f="minimum" type="number" min="0" step="0.01" value="${num(data.minimum)}"></label>
+      <label>Vence<input data-f="due" type="date" value="${data.due||""}"></label>
+      <button class="danger" type="button">Eliminar</button>`;
+    $("debts").appendChild(div);
+    div.querySelector("button").addEventListener("click",()=>{div.remove(); autosave();});
+    div.querySelectorAll("input").forEach(x=>x.addEventListener("change",autosave));
+  }
+
+  function readState(){
+    const obligations=[...document.querySelectorAll("#obligations .row")].map(r=>({
+      name:r.querySelector('[data-f="name"]').value.trim()||"Obligación",
+      type:r.querySelector('[data-f="type"]').value,
+      amount:num(r.querySelector('[data-f="amount"]').value),
+      due:r.querySelector('[data-f="due"]').value,
+      priority:r.querySelector('[data-f="priority"]').value
+    }));
+    const debts=[...document.querySelectorAll("#debts .row")].map(r=>({
+      name:r.querySelector('[data-f="name"]').value.trim()||"Deuda",
+      balance:num(r.querySelector('[data-f="balance"]').value),
+      apr:num(r.querySelector('[data-f="apr"]').value),
+      minimum:num(r.querySelector('[data-f="minimum"]').value),
+      due:r.querySelector('[data-f="due"]').value
+    }));
+    return {
+      personalCash:num($("personalCash").value), businessCash:num($("businessCash").value),
+      personalReserve:num($("personalReserve").value), businessReserve:num($("businessReserve").value),
+      weeklyBudget:num($("weeklyBudget").value), weeklySpent:num($("weeklySpent").value),
+      allowDraw:$("allowDraw").checked, obligations, debts
+    };
+  }
+
+  function writeState(s){
+    $("personalCash").value=num(s.personalCash); $("businessCash").value=num(s.businessCash);
+    $("personalReserve").value=num(s.personalReserve); $("businessReserve").value=num(s.businessReserve);
+    $("weeklyBudget").value=num(s.weeklyBudget); $("weeklySpent").value=num(s.weeklySpent);
+    $("allowDraw").checked=!!s.allowDraw;
+    $("obligations").innerHTML=""; $("debts").innerHTML="";
+    (s.obligations||[]).forEach(addOb); (s.debts||[]).forEach(addDebt);
+    if(!(s.obligations||[]).length) addOb({name:"Renta",type:"personal",priority:"critical"});
+    if(!(s.debts||[]).length) addDebt({name:"Tarjeta 1"});
+  }
+
+  function autosave(){
+    try{ localStorage.setItem(KEY, JSON.stringify(readState())); $("saveMsg").textContent="Guardado localmente."; }
+    catch(e){ $("saveMsg").textContent="No se pudo guardar en este navegador."; }
+  }
+
+  function allocate(){
+    const s=readState();
+    let p=s.personalCash, b=s.businessCash;
+    const incoming=num($("newMoney").value);
+    if($("moneyTo").value==="business") b+=incoming; else p+=incoming;
+    const plan=[], changes={ob:[],debt:[]};
+    const obligations=s.obligations.map((o,i)=>({...o,i,days:daysUntil(o.due)})).filter(o=>o.amount>0);
+    const debts=s.debts.map((d,i)=>({...d,i,days:daysUntil(d.due)})).filter(d=>d.balance>0);
+
+    const payOb=(o,from)=>{
+      let pool=from==="business"?b:p;
+      const pay=Math.min(pool,o.amount);
+      if(pay>0){
+        if(from==="business") b-=pay; else p-=pay;
+        plan.push({kind:"ob",level:o.priority==="critical"?"bad":"warn",text:`${from==="business"?"Negocio":"Personal"}: pagar ${money(pay)} a ${o.name}`,sub:`Vence ${o.due||"sin fecha"} · quedan ${money(o.amount-pay)}`});
+        changes.ob.push({i:o.i,amount:pay});
+      }
+    };
+
+    // 1) Business critical obligations due within 14 days
+    obligations.filter(o=>o.type==="business" && o.priority==="critical" && o.days<=14).sort((a,c)=>a.days-c.days).forEach(o=>payOb(o,"business"));
+
+    // 2) Protect business reserve
+    if(b<s.businessReserve){
+      plan.push({kind:"info",level:"bad",text:`Reserva del negocio incompleta`,sub:`Tienes ${money(b)} y tu meta es ${money(s.businessReserve)}. No se recomienda sacar dinero personal del negocio todavía.`});
+    } else {
+      plan.push({kind:"info",level:"good",text:`Reserva del negocio protegida`,sub:`Meta: ${money(s.businessReserve)}`});
+    }
+
+    // 3) Personal critical obligations due within 14 days
+    obligations.filter(o=>o.type==="personal" && o.priority==="critical" && o.days<=14).sort((a,c)=>a.days-c.days).forEach(o=>payOb(o,"personal"));
+
+    // 4) Weekly essential budget remaining
+    let weekNeed=Math.max(0,s.weeklyBudget-s.weeklySpent);
+    let weekPay=Math.min(p,weekNeed);
+    if(weekPay>0){ p-=weekPay; plan.push({kind:"week",level:"good",text:`Separar ${money(weekPay)} para gastos esenciales de esta semana`,sub:`Necesidad semanal restante: ${money(Math.max(0,weekNeed-weekPay))}`}); }
+    let personalShort=Math.max(0, s.personalReserve - p);
+
+    // 5) Optional owner draw only from business cash above reserve
+    if(s.allowDraw && personalShort>0 && b>s.businessReserve){
+      const surplus=b-s.businessReserve;
+      const draw=Math.min(surplus,personalShort);
+      if(draw>0){ b-=draw; p+=draw; plan.push({kind:"draw",level:"warn",text:`Transferencia sugerida negocio → personal: ${money(draw)}`,sub:`Solo usando efectivo por encima de la reserva del negocio.`}); }
+    }
+
+    // 6) Personal reserve
+    if(p<s.personalReserve){
+      plan.push({kind:"info",level:"warn",text:`Reserva personal todavía incompleta`,sub:`Tienes ${money(p)} y la meta es ${money(s.personalReserve)}.`});
+    }
+
+    // 7) Debt minimums due within 14 days
+    debts.filter(d=>d.days<=14).sort((a,c)=>a.days-c.days).forEach(d=>{
+      const pay=Math.min(p,d.minimum,d.balance);
+      if(pay>0){ p-=pay; plan.push({kind:"debt",level:"bad",text:`Pagar mínimo ${money(pay)} a ${d.name}`,sub:`APR ${d.apr.toFixed(2)}% · vence ${d.due||"sin fecha"}`}); changes.debt.push({i:d.i,amount:pay}); }
+    });
+
+    // 8) Normal obligations due within 14 days
+    obligations.filter(o=>o.priority==="normal" && o.days<=14).sort((a,c)=>a.days-c.days).forEach(o=>payOb(o,o.type));
+
+    // 9) Extra debt payment only from personal cash above reserve
+    let extra=Math.max(0,p-s.personalReserve);
+    if(extra>0 && debts.length){
+      let sorted=[...debts];
+      if($("strategy").value==="snowball") sorted.sort((a,c)=>a.balance-c.balance || c.apr-a.apr);
+      else sorted.sort((a,c)=>c.apr-a.apr || a.balance-c.balance);
+      for(const d of sorted){
+        if(extra<=0.005) break;
+        const already=changes.debt.filter(x=>x.i===d.i).reduce((z,x)=>z+x.amount,0);
+        const capacity=Math.max(0,d.balance-already);
+        const pay=Math.min(extra,capacity);
+        if(pay>0){ extra-=pay; p-=pay; plan.push({kind:"debt",level:"good",text:`Pago extra ${money(pay)} a ${d.name}`,sub:`Prioridad ${$("strategy").value==="snowball"?"por saldo más pequeño":"por APR más alto"} · APR ${d.apr.toFixed(2)}%`}); changes.debt.push({i:d.i,amount:pay}); }
+      }
+    }
+
+    const totalDebt=debts.reduce((z,d)=>z+d.balance,0);
+    const interest=debts.reduce((z,d)=>z+d.balance*(d.apr/100)/12,0);
+    lastPlan={s,finalP:p,finalB:b,changes,incoming,to:$("moneyTo").value};
+    renderPlan(plan,{p,b,totalDebt,interest});
+    $("apply").disabled=false;
+    autosave();
+  }
+
+  function renderPlan(plan,m){
+    $("headline").textContent=plan.length? "Orden recomendado con el dinero disponible:" : "No hay movimientos recomendados todavía.";
+    $("summary").innerHTML=`
+      <div class="metric"><span class="muted">Personal después</span><b>${money(m.p)}</b></div>
+      <div class="metric"><span class="muted">Negocio después</span><b>${money(m.b)}</b></div>
+      <div class="metric"><span class="muted">Deuda total</span><b>${money(m.totalDebt)}</b></div>
+      <div class="metric"><span class="muted">Interés aprox./mes</span><b>${money(m.interest)}</b></div>`;
+    $("plan").innerHTML=plan.map((x,i)=>`<div class="planstep ${x.level}"><strong>${i+1}. ${esc(x.text)}</strong><span class="muted">${esc(x.sub||"")}</span></div>`).join("");
+    $("warning").textContent="La app no usa tu banco. Solo calcula con los números que tú introduces.";
+  }
+
+  function applyPlan(){
+    if(!lastPlan) return;
+    $("personalCash").value=lastPlan.finalP.toFixed(2);
+    $("businessCash").value=lastPlan.finalB.toFixed(2);
+    const obRows=[...document.querySelectorAll("#obligations .row")];
+    const debtRows=[...document.querySelectorAll("#debts .row")];
+    lastPlan.changes.ob.forEach(c=>{
+      const inp=obRows[c.i]?.querySelector('[data-f="amount"]');
+      if(inp) inp.value=Math.max(0,num(inp.value)-c.amount).toFixed(2);
+    });
+    lastPlan.changes.debt.forEach(c=>{
+      const inp=debtRows[c.i]?.querySelector('[data-f="balance"]');
+      if(inp) inp.value=Math.max(0,num(inp.value)-c.amount).toFixed(2);
+    });
+    $("newMoney").value="0";
+    lastPlan=null; $("apply").disabled=true; autosave();
+    $("saveMsg").textContent="Plan aplicado y datos guardados.";
+  }
+
+  $("addOb").addEventListener("click",()=>{addOb(); autosave();});
+  $("addDebt").addEventListener("click",()=>{addDebt(); autosave();});
+  $("recommend").addEventListener("click",allocate);
+  $("apply").addEventListener("click",applyPlan);
+  $("save").addEventListener("click",autosave);
+  ["personalCash","businessCash","personalReserve","businessReserve","weeklyBudget","weeklySpent","allowDraw"].forEach(id=>{
+    $(id).addEventListener("change",autosave);
+  });
+
+  $("export").addEventListener("click",()=>{
+    const blob=new Blob([JSON.stringify(readState(),null,2)],{type:"application/json"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="respaldo_prioridad_financiera.json"; a.click(); URL.revokeObjectURL(a.href);
+  });
+
+  $("importFile").addEventListener("change",async e=>{
+    const f=e.target.files?.[0]; if(!f) return;
+    try{ const s=JSON.parse(await f.text()); writeState(s); autosave(); $("saveMsg").textContent="Respaldo importado."; }
+    catch(err){ $("saveMsg").textContent="Ese archivo no parece un respaldo válido."; }
+    e.target.value="";
+  });
+
+  $("reset").addEventListener("click",()=>{
+    if(!confirm("¿Borrar todos los datos guardados en este navegador?")) return;
+    localStorage.removeItem(KEY); writeState({}); $("saveMsg").textContent="Datos borrados.";
+  });
+
+  try{
+    const saved=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(saved) writeState(saved); else writeState({});
+  }catch(e){ writeState({}); }
+})();
+</script>
+</body>
+</html>
